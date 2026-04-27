@@ -1,7 +1,24 @@
-# email-template.md — メール本文テンプレート
+# email-template.md — メール件名・本文テンプレート（Apps Script Webhook 用）
 
 > 1日3本のブログ下書きを、**1通のメール**にまとめて送付するためのテンプレートです。
-> 3本を別々のメールで送ることはしません。
+> 本リポジトリではメール送信を **Google Apps Script Webhook** に HTTP POST する方式で行います。
+> Claude が組み立てた `subject` と `body` を、Webhook ペイロードの該当フィールドに格納してください。
+>
+> Webhook ペイロード全体の形は `templates/webhook-payload-example.json` を参照。
+> 詳細な送信フローは `CLAUDE.md` §6 を参照。
+
+---
+
+## このテンプレートが対応する Webhook フィールド
+
+| Webhook ペイロードのフィールド | このテンプレの対応箇所 |
+| --- | --- |
+| `subject` | 下記「件名（Subject）」の該当モードのフォーマット |
+| `body`    | 下記「本文（Body）」のフォーマット |
+| `token`   | このファイルでは扱わない（Routine 実行時に外部から注入） |
+| `mode`    | このファイルでは扱わない（`config/run-mode.md` の値をそのまま入れる） |
+
+3本を別メールで送らない（= Webhook も **1リクエストのみ**）。
 
 ---
 
@@ -10,24 +27,31 @@
 ### TEST モード（`config/run-mode.md` が `TEST`）
 
 ```
-【TEST】HotPepperブログ下書き 3本（YYYY-MM-DD）／ {サロン名}
+【TEST】【ブログ下書き YYYY-MM-DD】{サロン名} 3本分
 ```
 
 - **冒頭の `【TEST】` は必ず付けること。**
 - `YYYY-MM-DD` は当日の日付（生成日）。
-- `{サロン名}` は `config/salon.md` の値。未設定なら `(サロン名未設定)` と入れる。
+- `{サロン名}` は `config/salon.md` の値。本リポジトリでは `クラブオーサム(Club Awesome!)`。
+  値が未取得なら `(サロン名未設定)` と入れる。
+- 例: `【TEST】【ブログ下書き 2026-04-27】クラブオーサム(Club Awesome!) 3本分`
 
 ### PROD モード（`config/run-mode.md` が `PROD`）
 
 ```
-HotPepperブログ下書き 3本（YYYY-MM-DD）／ {サロン名}
+【ブログ下書き YYYY-MM-DD】{サロン名} 3本分
 ```
 
 - `【TEST】` は付けない。
+- 例: `【ブログ下書き 2026-04-27】クラブオーサム(Club Awesome!) 3本分`
 
 ---
 
 ## 本文（Body）
+
+> Webhook ペイロードの `body` フィールドにそのまま入れるテキスト本文です。
+> 改行は `\n` でエスケープして JSON に格納してください
+> （※ Apps Script 側で `MailApp.sendEmail` に渡す前提）。
 
 ```
 {宛名}様
@@ -106,10 +130,13 @@ HotPepperブログ下書き 3本（YYYY-MM-DD）／ {サロン名}
 
 ## 生成時のルール（Claude 用）
 
-- **メールは必ず1通にまとめる**。3本を別メールで送らない。
-- **TEST モードでは件名冒頭に `【TEST】` を必ず付ける**。
-- **TEST モードでは末尾に「※本メールはTEST送信です。お客様には送信されていません。」を必ず入れる**。
-- **送付先は `config/recipients.md` のモード対応の宛先のみ**。CC・BCCに他アドレスを入れない。
+- **メールは必ず1通にまとめる**。3本を別メールで送らない（Webhook POST も 1回のみ）。
+- **TEST モードでは `subject` 冒頭に `【TEST】` を必ず付ける。**
+- **TEST モードでは `body` 末尾に「※本メールはTEST送信です。お客様には送信されていません。」を必ず入れる。**
+- **`mode` フィールドは `config/run-mode.md` の値と必ず一致させる**（TEST / PROD）。
+- **送付先は Apps Script 側で `mode` に応じて決定**される。Claude 側の `body` 内に
+  メールアドレスを直接書かない（誤転送防止のため）。
 - 本文中に画像・画像URLを含めない。
 - 各記事の `{...}` プレースホルダはすべて埋めること。空欄のまま送らない。
 - `{宛名}` は PROD モードでは `config/recipients.md` の宛先表記、TEST モードでは「大石」とする。
+- `token` は **このテンプレートには絶対に書かない**。Routine 実行時に外部から注入された値を使う。
