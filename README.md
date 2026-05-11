@@ -23,6 +23,8 @@ Routines 画面の「指示」プロンプト内に直接記載する。
 リポジトリには絶対に保存しない。漏洩時は Chat スペース側で Webhook を再発行し、
 Routine の「指示」を書き換える。
 
+Routine からの履歴 push は GITHUB_PAT（Routine プロンプト内に記載）による PAT 認証で実施する。
+
 ## 運用フロー
 1. Routine が毎朝起動
 2. リポジトリの各種設定・データを読み込み
